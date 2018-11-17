@@ -1,0 +1,12 @@
+# set name of your service
+name: smsru
+
+# default paramenters
+env: {{ ENV }}
+listen: "{{ HOST|default('0.0.0.0')}}:{{PORT|default(8080) }}"
+redis_dsn: "{{ REDIS_DSN|default('redis://redis:6379') }}"
+ch_dsn: "{{ CHP_DSN|default('http://default:default@host:9090') }}"
+
+api_key: {{API_KEY}}
+endpoint: https://sms.ru/sms/send?api_id={{API_KEY}}&to={to}&from={sender}&msg={msg}&json=1
+sender: 79261244141
