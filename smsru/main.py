@@ -3,13 +3,11 @@ Band service skeleton
 (c) Dmitry Rodin 2018
 ---------------------
 """
-import asyncio
 import aiohttp
-from itertools import count
 from prodict import Prodict as pdict
-from band import expose, worker, settings, logger, redis_factory, rpc
+from band import expose, settings, logger, rpc
 from random import randrange
-from .helpers import pairs, ms, dictlist
+from .helpers import ms
 from .structs import ServiceId
 
 
@@ -50,10 +48,6 @@ async def confirm(service_id, code):
         await rpc.request('id', 'update', service_id=phone_id, ids=[[sid, ms()]])
         return {'success': 1}
 
-# async def saveid(service, sid, ids):
-#     unuq_id = service_id(service, sid)
-#     await rdp_hmset(gen_key(unuq_id), *dictlist(ids))
-
 
 @expose()
 async def verify(phone, service_id):
@@ -64,15 +58,8 @@ async def verify(phone, service_id):
     state.codes[sid_str] = code
     state.services_phones[sid_str] = phone_id
     print(f'sending code {code} to {phone_id.id}')
-    # await send_sms(phone_id.id, f'Your code is {code}')
+    await send_sms(phone_id.id, f'Your code is {code}')
     return {}
-
-
-# @expose()
-# async def status(service, sid):
-#     sid = service_id(service, sid)
-#     state = await rdp_hmgetall(gen_key(sid))
-#     return state
 
 
 @expose()
@@ -125,14 +112,6 @@ async def api_call(url, params=None, json=None, method='post'):
                 return {}
             if res.status == 200:
                 return await res.json()
-
-
-# def service_id(service, id):
-#     return f'{service}:{id}'
-
-
-# def gen_key(key, section='g'):
-#     return f"id:{section}:{key}"
 
 
 def new_code():
