@@ -17,25 +17,6 @@ state = pdict(
     redis_pool=None
 )
 
-
-# @expose()
-# async def lookup(service, sid):
-#     unuq_id = service_id(service, sid)
-#     info = await rdp_hmgetall(gen_key(unuq_id))
-#     if info and len(info.keys()):
-#         return info
-
-
-# @expose()
-# async def lookup_by_phone(phone, service):
-#     info = await rdp_hmgetall(gen_key(phone, section='sid'))
-#     if info and len(info.keys()):
-#         for k, v in info.items():
-#             s, sid = k.split(':')
-#             if s == service:
-#                 return dict(sid=sid, service=s, created=v)
-
-
 @expose()
 async def confirm(service_id, code):
     sid = ServiceId(*service_id)
@@ -68,39 +49,6 @@ async def send_sms(to, msg):
     result = await api_call(settings.endpoint.format(**params))
     logger.debug('send_sms', p=params, r=result)
     return result
-
-
-# async def rdp_set(key, val, ttl=None):
-#     if state.redis_pool:
-#         with await state.redis_pool as conn:
-#             if ttl:
-#                 return await conn.execute('SETEX', key, ttl, val.encode())
-#             else:
-#                 return await conn.execute('SET', key, val.encode())
-#     logger.warn('redis pool not ready')
-
-
-# @expose()
-# async def rdp_get(key):
-#     if state.redis_pool:
-#         with await state.redis_pool as conn:
-#             res = await conn.execute('GET', key)
-#             if res:
-#                 return res.decode()
-
-
-# async def rdp_hmset(key, *list_):
-#     if state.redis_pool:
-#         with await state.redis_pool as conn:
-#             return await conn.execute('HMSET', key, *list_)
-#     logger.warn('redis pool not ready')
-
-
-# async def rdp_hmgetall(key):
-#     if state.redis_pool:
-#         with await state.redis_pool as conn:
-#             matches = await conn.execute('HGETALL', key)
-#             return {k.decode(): v.decode() for k, v in pairs(matches or [])}
 
 
 async def api_call(url, params=None, json=None, method='post'):
