@@ -1,24 +1,61 @@
 """
-Band service skeleton
-(c) Dmitry Rodin 2018
+SMSRU Rockstat service
+(c) Dmitry Rodin 2018-2019
 ---------------------
 """
 import aiohttp
-from prodict import Prodict as pdict
-from band import expose, settings, logger, rpc
+from band import expose, settings, logger, rpc, worker
 from random import randrange
 from .helpers import ms
 from .structs import ServiceId
+from userlib import create_redis
 
 
-state = pdict(
-    codes=pdict(),
-    services_phones=pdict(),
-    redis_pool=None
-)
+class WaitWithCode:
+    code: str
+    service_id: ServiceId
+
+
+class state:
+    waiting = dict()
+    codes = dict()
+    services_phones = dict()
+    redis_pool = None
+
+
+redis = create_redis(prefix='smsru')
+
+
+@expose()
+async def verify(phone, service_id, **kwargs):
+    """
+    Init verificatiuon process.
+    --
+    verify(phone:str, service_id:ServiceId)
+    --
+    result: {}
+    """
+    code = kwargs.get('code')
+    if not code:
+        code = new_code()
+    sid = ServiceId(*service_id)
+    sid_str = str(sid)
+    phone_id = ServiceId('phone', phone)
+    # Temp store
+    state.codes[sid_str] = code
+    state.services_phones[sid_str] = phone_id
+    print(f'sending code {code} to {phone_id.id}')
+    await send_sms(phone_id.id, f'Your code is {code}')
+    return {}
+
 
 @expose()
 async def confirm(service_id, code):
+    """
+    Finish validation and save match
+    --
+    confirm(service_id:ServiceId, code:str)
+    """
     sid = ServiceId(*service_id)
     sid_str = str(sid)
     phone_id = state.services_phones.get(sid_str, None)
@@ -30,21 +67,17 @@ async def confirm(service_id, code):
         return {'success': 1}
 
 
-@expose()
-async def verify(phone, service_id):
-    code = new_code()
-    sid = ServiceId(*service_id)
-    sid_str = str(sid)
-    phone_id = ServiceId('phone', phone)
-    state.codes[sid_str] = code
-    state.services_phones[sid_str] = phone_id
-    print(f'sending code {code} to {phone_id.id}')
-    await send_sms(phone_id.id, f'Your code is {code}')
-    return {}
 
 
 @expose()
 async def send_sms(to, msg):
+    logger.info(f'sending sms to {to}')
+    curr_count = await redis.get(to)
+    curr_count = int(curr_count or 0)
+    if curr_count >= 10:
+        logger.info('too many requests')
+        return
+    await redis.incr(to)
     params = dict(sender=settings.sender, to=to, msg=msg)
     result = await api_call(settings.endpoint.format(**params))
     logger.debug('send_sms', p=params, r=result)
@@ -68,3 +101,8 @@ def new_code():
 
 def gen_key(key, section='g'):
     return f"id:{section}:{key}"
+
+
+@worker()
+async def start():
+    await redis.initialize()
