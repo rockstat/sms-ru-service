@@ -10,8 +10,8 @@ start-dev:
 clean:
 	find . -name "*.pyc" -exec rm -f "{}" \;
 
-run:
-	curl "host:10000/run/$${PWD##*/}" | jq
+run-host:
+	curl "host:10000/run/$${PWD##*/}?nocache=1" | jq
 
-rm:
+rm-host:
 	curl "host:10000/rm/$${PWD##*/}" | jq
